@@ -1,22 +1,9 @@
-# Large data files
-*.csv
-4129133.csv
-weather_cleaned.csv
-allergy_pollen_data.csv
-combined_allergy_weather.csv
+# Note: Large files are now tracked with Git LFS
+# See .gitattributes for LFS configuration
 
-# Original JSON data files
-query.json
-query2.json
-
-# Generated model files (use Git LFS instead)
-*.joblib
-*.pkl
-
-# Generated plots and analysis
-*.png
-*.jpg
-*.jpeg
+# Only ignore temporary/cache data files
+temp_*.csv
+cache_*.csv
 
 # Python cache
 __pycache__/
