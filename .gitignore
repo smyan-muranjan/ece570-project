@@ -1,0 +1,42 @@
+# Large data files
+*.csv
+4129133.csv
+weather_cleaned.csv
+allergy_pollen_data.csv
+combined_allergy_weather.csv
+
+# Original JSON data files
+query.json
+query2.json
+
+# Generated model files (use Git LFS instead)
+*.joblib
+*.pkl
+
+# Generated plots and analysis
+*.png
+*.jpg
+*.jpeg
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
