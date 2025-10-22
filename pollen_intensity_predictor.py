@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Pollen Intensity Predictor - Baseline Model
 Predicts daily pollen levels using weather and temporal features
@@ -70,7 +69,7 @@ def create_pollen_severity_scale(df):
 def engineer_features(df):
     """Engineer temporal and weather features for prediction"""
     print("\n🔧 Engineering features...")
-    
+     
     # Sort by date for time-based features
     df = df.sort_values('Date_Standard').reset_index(drop=True)
     
