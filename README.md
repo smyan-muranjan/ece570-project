@@ -4,3 +4,7 @@ This preliminary version of the project focuses on predicting allergy severity b
 - Uses a Random Forest Regressor model to predict allergy severity.
 - Data is sourced from historical weather data and pollen counts near Burlington, VT.
 - The model is trained and evaluated using Mean Absolute Error (MAE) as the performance metric
+  
+The secondary revision of the project also focuses on predicting allergy severity based on weather and temporal data as well as optional past week allergy severity data.
+- Uses an XGBoost Regressor model to predict allergy severity.
+- 
