@@ -6,96 +6,131 @@ format:
     scrollable: true
 ---
 
-## Slide 1 - Problem statement & goal
+## Slide 1 — Problem statement & goal
 
-**Problem:** Generic pollen forecasts ignore individual sensitivity and history, producing poor, non-actionable guidance for many allergy sufferers.
+**Problem:** Public pollen reports emphasize raw counts or broad categories that do not translate into an actionable, day‑to‑day severity forecast. Users need a simple, reliable 0–10 severity prediction driven by readily available weather and pollen inputs.
 
-**Primary goal:** Build a prototype that fuses local pollen & weather data to produce **daily symptom severity forecasts** and identify likely allergen drivers (actionable alerts).
+**Primary goal:** Predict daily pollen severity (0–10) for each pollen type and overall pollen from user‑provided weather metrics and daily pollen counts, targeting low error and providing interpretable feature drivers.
 
----
-
-## Slide 2 - Methodology overview
-
-**Data inputs**  
-- **Pollen counts:** Daily total pollen counts (target converted to 0–10 severity scale based on dataset percentiles)  
-- **Temporal features:** Year, month, day-of-year, day-of-week + cyclical encodings (sine/cosine)  
-- **Weather features:** Daily max/min temperature, precipitation, wind speed, derived temperature range, rainy-day indicator, high-wind indicator  
-- **Lagged signals:** 1-, 3-, and 7-day lags for pollen, temperature, precipitation  
-- **Rolling averages:** 3-, 7-, and 14-day rolling means for pollen counts  
-
-**Model**  
-- **Random Forest Regressor** trained to predict daily pollen severity (0–10 scale)  
-- **Evaluation metrics (so far):** MAE, RMSE, R² on held-out test set  
+**Updated purpose/scope:** Due to the lack of reliable user symptom labels, the project focuses on predicting daily pollen severity (0–10) from user-provided weather inputs and daily pollen counts. Personalization (symptom forecasting) is not possible because labeled data is not available.
 
 ---
 
-## Slide 3 - Code snippet 1
+## Slide 2 — Updated Methodology & Progress
+**Targets & labels**  
+- Use AAAAI/NAB biological thresholds to convert raw pollen counts → 0–10 severity for Tree, Grass, Weed, Ragweed, and Total_Pollen.  
+- Main reported target in this checkpoint: `Total_Pollen_Severity`.  
 
+**Feature engineering**  
+- Temporal: Day_of_Week; cyclical encodings for Month and Day‑of‑Year (sin/cos).  
+- Core weather: TMAX, TMIN, TAVG, PRCP, AWND; plus Temp_Range and Is_Rainy.  
+- Weather dynamics: 30‑day TAVG mean and Temp_Anomaly; seasonal rainfall cumsum; 30‑day Wind_Percentile.  
+- Lags: Total_Pollen lag 1/3/7; TMAX and PRCP lags 1/3.
+- Rolling: 3‑ and 7‑day rolling means/sums for pollen, temperature, rainfall.  
+- Growing Degree Days: general + species‑specific (Tree/Grass/Weed) and annual cumsums.  
+- Peak proximity: Gaussian proximity to seasonal peaks (≈ DOY 110/175/255).  
+- Interactions: Temp_x_Spring, Temp_x_Summer, Rain_x_Wind.  
+
+**Model & training**  
+- Regressor: XGBoost 
+- Split: time‑ordered 80/20 train/test; within‑train 90/10 validation for early stopping.  
+- GPU auto‑detection with CPU fallback; predictions clipped to [0, 10].  
+
+**Evaluation metrics**  
+- MAE, RMSE, R², Weighted MAE (penalize high‑severity errors), Acc within ±1/±2, and High‑day MAE (≥7).  
+
+---
+
+## Slide 3 — Code Snippet 1
 ```python
-# create lag + rolling features (example)
-def make_lag_rolling_features(df, cols, lags=(1,2,3), window=7):
-    for c in cols:
-        for lag in lags:
-            df[f"{c}_lag{lag}"] = df[c].shift(lag)
-        df[f"{c}_roll_mean{window}"] = df[c].rolling(window=window, min_periods=1).mean()
-        df[f"{c}_roll_std{window}"] = df[c].rolling(window=window, min_periods=1).std().fillna(0)
-    # basic imputation for edges
-    return df.fillna(method="bfill").fillna(0)
+def get_aaaai_thresholds():
+    return {
+        'Tree': {'thresholds': [0, 1, 15, 90, 1500]},
+        'Grass': {'thresholds': [0, 1, 5, 20, 200]},
+        'Weed': {'thresholds': [0, 1, 10, 50, 500]},
+        'Ragweed': {'thresholds': [0, 1, 10, 50, 500]},
+        'Total_Pollen': {
+            'thresholds': [0, 10, 30, 60, 100, 200, 500, 1000, 2000, 5000]
+        }
+    }
+
+def pollen_to_severity(count, thresholds):
+    if count == 0 or pd.isna(count):
+        return 0
+    for i in range(len(thresholds) - 1, 0, -1):
+        if count >= thresholds[i]:
+            return min(10, i * (10 / (len(thresholds) - 1)))
+    return 0
 ```
 
 ---
 
-## Slide 4 - Explanation of snippet 1
-
-- This function synthesizes temporal signals that are shown to matter for symptom forecasting:
-  - **Lag features** capture short-term persistence (yesterday's pollen often predicts today).
-  - **Rolling mean/std** capture local trends and volatility (e.g., a multi-day pollen spike).
-- These features are lightweight, fast to compute, and were used in the current model run.
+## Slide 4 — Explanation of Snippet 1
+- These biological thresholds for pollen counts are determined from the American Academy of Allergy, Asthma & Immunology (AAAAI).
+- Biological thresholds align numeric counts with meaningful exposure bands (Low → Critical), then compress to a consistent 0–10 severity target used across all models.
+- This improves interpretability and stabilizes learning compared to raw counts.
 
 ---
 
-## Slide 5 - Code snippet 2
-
+## Slide 5 — Code Snippet 2
 ```python
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import cross_val_score
-import joblib
+def train_xgboost_for_pollen_type(X_train, y_train, X_test, y_test, pollen_type, use_gpu=True, tune=False):
+    if use_gpu:
+        try:
+            test_model = xgb.XGBRegressor(tree_method='hist', device='cuda', n_estimators=1)
+            test_model.fit(X_train[:100], y_train[:100])
+            config = get_gpu_xgboost_config()  # device='cuda', early_stopping_rounds=50
+        except Exception:
+            config = get_gpu_xgboost_config(); config['device'] = 'cpu'
+    else:
+        config = get_gpu_xgboost_config(); config['device'] = 'cpu'
 
-rf = RandomForestRegressor(n_estimators=200, max_depth=10, random_state=42)
-scores = cross_val_score(rf, X_train, y_train, cv=5, scoring="neg_mean_absolute_error")
-rf.fit(X_train, y_train)
-joblib.dump(rf, "models/pollen_rf_v1.joblib")
-print("CV MAE:", -scores.mean())
+    # Train with validation for early stopping
+    val_split = int(len(X_train) * 0.9)
+    X_tr, X_val = X_train[:val_split], X_train[val_split:]
+    y_tr, y_val = y_train[:val_split], y_train[val_split:]
+
+    model = xgb.XGBRegressor(**config)
+    model.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], verbose=False)
+    y_pred = np.clip(model.predict(X_test), 0, 10)
+    return model, comprehensive_metrics(y_test, y_pred), y_pred
 ```
 
 ---
 
-## Slide 6 - Explanation of snippet 2
+## Slide 6 — Explanation of Snippet 2
 
-- **Model choice:** Random Forest regression - good bias/variance tradeoff for tabular time-series features, quick to train for iterations.
-- **Cross-validation:** 5-fold CV using negative MAE for an initial estimate of generalization.
-- **Persistence:** model serialized via `joblib` for the demo and integration into the prototype app.  
-
----
-
-## Slide 7 - Preliminary results
- 
-- **Test MAE ≈ 0.72** - *average prediction error < 1 severity level.*  
-  - **Interpretation:** The model’s predictions are typically within one severity category of the true value, which is considered **Excellent** per our rubric (MAE ≤ 1.0).
-- **Test RMSE ≈ 0.98** - *slightly higher than MAE, indicating modest spread in errors.*  
-  - **Interpretation:** Most errors are close to the mean; no major outlier problem.
-- **Test R² ≈ 0.86** - *model explains ≈ 86% of the variance in daily pollen severity.*  
-  - **Interpretation:** Strong fit - the model captures most of the signal from weather, temporal, and lag/rolling features.
+- Purpose: train an XGBoost regressor per pollen type to predict 0–10 severity.
+- Device auto‑selection: attempts a tiny CUDA fit to confirm GPU; falls back to CPU if unavailable.
+- Config: uses `get_gpu_xgboost_config()` (hist tree method, early_stopping_rounds=50, regularization params) and sets `device` based on detection.
+- Time‑aware validation: reserves the last 10% of the training window as a validation set for early stopping while preserving temporal order.
+- Fit loop: trains with `(X_val, y_val)` as eval_set; stops when validation loss plateaus, implicitly selecting the best iteration.
+- Prediction post‑processing: clips model outputs to [0, 10] to respect the severity scale.
+- Metrics: returns `comprehensive_metrics(...)` including MAE, RMSE, R², weighted MAE, Acc (±1/±2), and high‑day MAE (≥7 severity).
+- Optional tuning path (when enabled in the wider script): uses RandomizedSearchCV with TimeSeriesSplit and MAE scoring.
 
 ---
 
-## Slide 8 - Result Analysis & Next Steps
+## Slide 7 — New Preliminary Result
 
-**Result analysis**  
-- The current Random Forest baseline performs very well on predicting **daily pollen severity** (MAE ≈ 0.72, R² ≈ 0.86), meaning it is already reliably modeling seasonal and weather-driven pollen variation.  
-- This confirms that the feature set (temporal, weather, lag/rolling) provides strong predictive signal and that the model is a solid foundation for personalization work.    
+| Model | MAE | RMSE | R² | Acc (±1) | Acc (±2) |
+|---|---:|---:|---:|---:|---:|
+| XGBoost Multi-Type (Total Pollen) | 0.517 | 0.775 | 0.879 | 84.8% | 96.1% |
+| XGBoost (Baseline) | 0.689 | 0.969 | 0.864 | 75.6% | 94.2% |
+| Random Forest (Enhanced) | 0.699 | 0.973 | 0.863 | — | — |
+| Random Forest (Baseline) | 0.715 | 0.982 | 0.861 | — | — |
+| Weather Only | 1.038 | 1.376 | 0.725 | 56.8% | 85.9% |
 
-**Next steps**  
-1. **Integrate symptom diary data** - collect or simulate daily symptom scores to train a per-user model.  
-2. **Allergen identification module:** predict top-1 allergen driver; evaluate with Allergen F1 score.  
-3. **High-risk classification:** define symptom threshold → alert days; compute high-risk F1 score.  
+---
+
+## Slide 8 — Result Analysis & Next Steps
+
+**Conclusions**  
+- Best overall: XGBoost Multi-Type (Total Pollen): MAE 0.517, R² 0.879  
+- vs RF baseline from previous milestone: ≈27.8% lower MAE (0.715 → 0.517)  
+- The severity-only framing (0–10) works well with XGBoost; biological thresholds + refined features improve accuracy.  
+- Multi-type training (Total_Pollen target) outperforms RF and the simpler baseline.
+
+**Next steps**   
+- Mobile App: create a mobile application using React Native that takes user data and outputs a forecast using the API.  
+- API: expose a simple API that accepts weather + pollen inputs and returns severity (0–10) with top drivers.  
