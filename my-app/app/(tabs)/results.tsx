@@ -86,7 +86,7 @@ export default function ResultsScreen() {
               Prediction Results
             </Text>
             <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
-              {formatDate(prediction.date)}
+              {formatDate(prediction.prediction.date)}
             </Text>
           </Animated.View>
 
@@ -94,8 +94,8 @@ export default function ResultsScreen() {
           <Animated.View entering={FadeInDown.delay(100)}>
             <LinearGradient
               colors={[
-                getSeverityColor(prediction.severity_score) + '40',
-                getSeverityColor(prediction.severity_score) + '20',
+                getSeverityColor(prediction.prediction.severity_score) + '40',
+                getSeverityColor(prediction.prediction.severity_score) + '20',
               ] as const}
               style={styles.severityCard}
             >
@@ -105,19 +105,19 @@ export default function ResultsScreen() {
                     <Text style={[styles.severityLabel, isDark && styles.subtitleDark]}>
                       Pollen Severity
                     </Text>
-                    <Text style={[styles.severityValue, { color: getSeverityColor(prediction.severity_score) }]}>
-                      {prediction.severity_score.toFixed(1)}
+                    <Text style={[styles.severityValue, { color: getSeverityColor(prediction.prediction.severity_score) }]}>
+                      {prediction.prediction.severity_score.toFixed(1)}
                     </Text>
                   </View>
-                  <View style={[styles.severityBadge, { backgroundColor: getSeverityColor(prediction.severity_score) }]}>
-                    <Text style={styles.severityBadgeText}>{prediction.severity_level}</Text>
+                  <View style={[styles.severityBadge, { backgroundColor: getSeverityColor(prediction.prediction.severity_score) }]}>
+                    <Text style={styles.severityBadgeText}>{prediction.prediction.severity_level}</Text>
                   </View>
                 </View>
 
                 <View style={styles.confidenceContainer}>
-                  <Ionicons name="shield-checkmark" size={16} color={getSeverityColor(prediction.severity_score)} />
+                  <Ionicons name="shield-checkmark" size={16} color={getSeverityColor(prediction.prediction.severity_score)} />
                   <Text style={[styles.confidenceText, isDark && styles.textDark]}>
-                    {(prediction.confidence * 100).toFixed(0)}% Model Confidence
+                    {((prediction.prediction.confidence || 0) * 100).toFixed(0)}% Model Confidence
                   </Text>
                 </View>
               </View>
@@ -132,8 +132,8 @@ export default function ResultsScreen() {
               style={styles.recommendationCard}
             >
               <View style={styles.recommendationContent}>
-                <View style={[styles.iconCircle, { backgroundColor: getSeverityColor(prediction.severity_score) + '20' }]}>
-                  <Ionicons name="warning" size={24} color={getSeverityColor(prediction.severity_score)} />
+                <View style={[styles.iconCircle, { backgroundColor: getSeverityColor(prediction.prediction.severity_score) + '20' }]}>
+                  <Ionicons name="warning" size={24} color={getSeverityColor(prediction.prediction.severity_score)} />
                 </View>
                 <View style={styles.recommendationText}>
                   <Text style={[styles.recommendationTitle, isDark && styles.textDark]}>
@@ -148,125 +148,83 @@ export default function ResultsScreen() {
           </Animated.View>
 
           {/* Allergen Breakdown */}
-          <Animated.View entering={FadeInDown.delay(300)} style={styles.section}>
-            <Text style={[styles.sectionTitle, isDark && styles.subtitleDark]}>
-              ALLERGEN BREAKDOWN
-            </Text>
+          {prediction.allergen_breakdown && prediction.allergen_breakdown.length > 0 && (
+            <Animated.View entering={FadeInDown.delay(300)} style={styles.section}>
+              <Text style={[styles.sectionTitle, isDark && styles.subtitleDark]}>
+                ALLERGEN BREAKDOWN
+              </Text>
 
-            {/* Percentage Bar */}
-            <View style={styles.percentageBar}>
-              {prediction.allergen_breakdown.map((allergen, index) => (
-                <View 
-                  key={allergen.allergen_type}
-                  style={[
-                    styles.percentageSegment,
-                    { 
-                      width: `${allergen.percentage}%`,
-                      backgroundColor: getAllergenColor(allergen.allergen_type),
-                      borderTopLeftRadius: index === 0 ? 6 : 0,
-                      borderBottomLeftRadius: index === 0 ? 6 : 0,
-                      borderTopRightRadius: index === prediction.allergen_breakdown.length - 1 ? 6 : 0,
-                      borderBottomRightRadius: index === prediction.allergen_breakdown.length - 1 ? 6 : 0,
-                    }
-                  ]}
-                />
-              ))}
-            </View>
-
-            {/* Allergen Cards */}
-            {prediction.allergen_breakdown.map((allergen, index) => (
-              <BlurView 
-                key={allergen.allergen_type}
-                intensity={isDark ? 20 : 80} 
-                tint={isDark ? 'dark' : 'light'}
-                style={styles.allergenCard}
-              >
-                <View style={styles.allergenContent}>
-                  <View style={[styles.allergenIcon, { backgroundColor: getAllergenColor(allergen.allergen_type) + '20' }]}>
-                    <Ionicons name="leaf" size={24} color={getAllergenColor(allergen.allergen_type)} />
-                  </View>
-                  
-                  <View style={styles.allergenDetails}>
-                    <Text style={[styles.allergenName, isDark && styles.textDark]}>
-                      {allergen.allergen_type}
-                    </Text>
-                    <View style={styles.allergenStats}>
-                      <Text style={[styles.allergenPercentage, { color: getAllergenColor(allergen.allergen_type) }]}>
-                        {allergen.percentage.toFixed(1)}%
-                      </Text>
-                      <Text style={[styles.allergenSeparator, isDark && styles.subtitleDark]}>
-                        •
-                      </Text>
-                      <Text style={[styles.allergenSeverity, isDark && styles.subtitleDark]}>
-                        Severity: {allergen.severity.toFixed(1)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={[styles.allergenProgress, { width: 60 }]}>
-                    <View style={styles.allergenProgressBg}>
-                      <View 
-                        style={[
-                          styles.allergenProgressFill,
-                          { 
-                            width: `${(allergen.severity / 10) * 100}%`,
-                            backgroundColor: getAllergenColor(allergen.allergen_type) 
-                          }
-                        ]}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </BlurView>
-            ))}
-          </Animated.View>
-
-          {/* Weather Conditions Used */}
-          <Animated.View entering={FadeInDown.delay(400)} style={styles.section}>
-            <Text style={[styles.sectionTitle, isDark && styles.subtitleDark]}>
-              WEATHER CONDITIONS USED
-            </Text>
-            
-            <BlurView 
-              intensity={isDark ? 20 : 80} 
-              tint={isDark ? 'dark' : 'light'}
-              style={styles.weatherCard}
-            >
-              <View style={styles.weatherGrid}>
-                <View style={styles.weatherItem}>
-                  <Ionicons name="thermometer" size={20} color="#FF9500" />
-                  <Text style={[styles.weatherLabel, isDark && styles.subtitleDark]}>High</Text>
-                  <Text style={[styles.weatherValue, isDark && styles.textDark]}>
-                    {prediction.weather_conditions.temp_max}°F
-                  </Text>
-                </View>
-                <View style={styles.weatherItem}>
-                  <Ionicons name="thermometer-outline" size={20} color="#5AC8FA" />
-                  <Text style={[styles.weatherLabel, isDark && styles.subtitleDark]}>Low</Text>
-                  <Text style={[styles.weatherValue, isDark && styles.textDark]}>
-                    {prediction.weather_conditions.temp_min}°F
-                  </Text>
-                </View>
-                <View style={styles.weatherItem}>
-                  <Ionicons name="rainy" size={20} color="#30D158" />
-                  <Text style={[styles.weatherLabel, isDark && styles.subtitleDark]}>Rain</Text>
-                  <Text style={[styles.weatherValue, isDark && styles.textDark]}>
-                    {prediction.weather_conditions.precipitation}"
-                  </Text>
-                </View>
-                <View style={styles.weatherItem}>
-                  <Ionicons name="flag" size={20} color="#BF5AF2" />
-                  <Text style={[styles.weatherLabel, isDark && styles.subtitleDark]}>Wind</Text>
-                  <Text style={[styles.weatherValue, isDark && styles.textDark]}>
-                    {prediction.weather_conditions.wind_speed} mph
-                  </Text>
-                </View>
+              {/* Percentage Bar */}
+              <View style={styles.percentageBar}>
+                {prediction.allergen_breakdown.map((allergen, index) => (
+                  <View 
+                    key={allergen.allergen_type}
+                    style={[
+                      styles.percentageSegment,
+                      { 
+                        width: `${allergen.contribution_pct}%`,
+                        backgroundColor: getAllergenColor(allergen.allergen_type),
+                        borderTopLeftRadius: index === 0 ? 6 : 0,
+                        borderBottomLeftRadius: index === 0 ? 6 : 0,
+                        borderTopRightRadius: index === prediction.allergen_breakdown!.length - 1 ? 6 : 0,
+                        borderBottomRightRadius: index === prediction.allergen_breakdown!.length - 1 ? 6 : 0,
+                      }
+                    ]}
+                  />
+                ))}
               </View>
-            </BlurView>
-          </Animated.View>
+
+              {/* Allergen Cards */}
+              {prediction.allergen_breakdown.map((allergen, index) => (
+                <BlurView 
+                  key={allergen.allergen_type}
+                  intensity={isDark ? 20 : 80} 
+                  tint={isDark ? 'dark' : 'light'}
+                  style={styles.allergenCard}
+                >
+                  <View style={styles.allergenContent}>
+                    <View style={[styles.allergenIcon, { backgroundColor: getAllergenColor(allergen.allergen_type) + '20' }]}>
+                      <Ionicons name="leaf" size={24} color={getAllergenColor(allergen.allergen_type)} />
+                    </View>
+                    
+                    <View style={styles.allergenDetails}>
+                      <Text style={[styles.allergenName, isDark && styles.textDark]}>
+                        {allergen.allergen_type}
+                      </Text>
+                      <View style={styles.allergenStats}>
+                        <Text style={[styles.allergenPercentage, { color: getAllergenColor(allergen.allergen_type) }]}>
+                          {allergen.contribution_pct.toFixed(1)}%
+                        </Text>
+                        <Text style={[styles.allergenSeparator, isDark && styles.subtitleDark]}>
+                          •
+                        </Text>
+                        <Text style={[styles.allergenSeverity, isDark && styles.subtitleDark]}>
+                          Severity: {allergen.severity_score.toFixed(1)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.allergenProgress, { width: 60 }]}>
+                      <View style={styles.allergenProgressBg}>
+                        <View 
+                          style={[
+                            styles.allergenProgressFill,
+                            { 
+                              width: `${(allergen.severity_score / 10) * 100}%`,
+                              backgroundColor: getAllergenColor(allergen.allergen_type) 
+                            }
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </BlurView>
+              ))}
+            </Animated.View>
+          )}
 
           {/* Action Button */}
-          <Animated.View entering={FadeInDown.delay(500)} style={styles.actionSection}>
+          <Animated.View entering={FadeInDown.delay(400)} style={styles.actionSection}>
             <Pressable style={styles.newPredictionButton}>
               <LinearGradient
                 colors={['#007AFF', '#0051D5'] as const}

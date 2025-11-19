@@ -47,7 +47,10 @@ async def predict_daily_pollen(request: DailyPredictionRequest):
         severity, level = prediction_service.predict_daily(
             weather_data=weather_dict,
             date=datetime.combine(request.weather.date, datetime.min.time()),
-            historical_pollen=request.historical_pollen
+            historical_pollen=request.historical_pollen,
+            historical_temps=request.historical_temps,
+            historical_precip=request.historical_precip,
+            historical_wind=request.historical_wind
         )
         
         # Get recommendation
@@ -57,7 +60,7 @@ async def predict_daily_pollen(request: DailyPredictionRequest):
             date=request.weather.date,
             severity_score=round(severity, 2),
             severity_level=level,
-            confidence=0.86  # Based on model R² score
+            confidence=0.92  # XGBoost total pollen R² score
         )
         
         return DailyPredictionResponse(
@@ -156,7 +159,11 @@ async def identify_allergens(request: AllergenIdentificationRequest):
         # Identify allergens
         allergen_scores = prediction_service.identify_allergens(
             weather_data=weather_dict,
-            date=datetime.combine(request.weather.date, datetime.min.time())
+            date=datetime.combine(request.weather.date, datetime.min.time()),
+            historical_pollen=request.historical_pollen,
+            historical_temps=request.historical_temps,
+            historical_precip=request.historical_precip,
+            historical_wind=request.historical_wind
         )
         
         # Calculate total and percentages

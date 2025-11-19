@@ -20,32 +20,30 @@ export interface WeatherInput {
   date: string;
   temp_max: number;
   temp_min: number;
+  temp_avg?: number;
   precipitation: number;
-  wind_speed: number;
+  wind_speed?: number;
 }
 
 export interface AllergenScore {
   allergen_type: string;
-  severity: number;
+  severity_score: number;
   severity_level: string;
-  percentage: number;
+  contribution_pct: number;
+}
+
+export interface PollenPrediction {
+  date: string;
+  severity_score: number;
+  severity_level: string;
+  confidence?: number;
 }
 
 export interface PredictionResponse {
-  date: string;
-  total_pollen: number;
-  severity_level: string;
-  severity_score: number;
-  allergen_breakdown: AllergenScore[];
-  weather_conditions: {
-    temp_max: number;
-    temp_min: number;
-    temp_avg: number;
-    precipitation: number;
-    wind_speed: number;
-  };
+  prediction: PollenPrediction;
   recommendation: string;
-  confidence: number;
+  allergen_breakdown?: AllergenScore[];
+  primary_allergen?: string;
 }
 
 export interface WeeklyPrediction {
@@ -66,9 +64,33 @@ export interface WeeklyPredictionResponse {
 export const pollenApi = {
   /**
    * Get daily pollen prediction
+   * @param weather - Weather conditions for the prediction day
+   * @param historicalPollen - Optional: Last 7 days of raw pollen counts (improves accuracy significantly)
+   * @param historicalTemps - Optional: Last 30 days of average temperatures in °F (for anomaly detection)
+   * @param historicalPrecip - Optional: Season-to-date precipitation in inches (for cumulative rainfall)
+   * @param historicalWind - Optional: Last 30 days of wind speeds in mph (for wind percentile)
    */
-  async getDailyPrediction(weather: WeatherInput): Promise<PredictionResponse> {
-    const response = await api.post('/predict/daily', weather);
+  async getDailyPrediction(
+    weather: WeatherInput,
+    historicalPollen?: number[],
+    historicalTemps?: number[],
+    historicalPrecip?: number[],
+    historicalWind?: number[]
+  ): Promise<PredictionResponse> {
+    const requestBody: any = { weather };
+    if (historicalPollen && historicalPollen.length > 0) {
+      requestBody.historical_pollen = historicalPollen;
+    }
+    if (historicalTemps && historicalTemps.length > 0) {
+      requestBody.historical_temps = historicalTemps;
+    }
+    if (historicalPrecip && historicalPrecip.length > 0) {
+      requestBody.historical_precip = historicalPrecip;
+    }
+    if (historicalWind && historicalWind.length > 0) {
+      requestBody.historical_wind = historicalWind;
+    }
+    const response = await api.post('/predict/daily', requestBody);
     return response.data;
   },
 
@@ -76,22 +98,45 @@ export const pollenApi = {
    * Get weekly pollen predictions
    */
   async getWeeklyPrediction(weatherList: WeatherInput[]): Promise<WeeklyPredictionResponse> {
-    const response = await api.post('/predict/weekly', { weather_data: weatherList });
+    const response = await api.post('/predict/weekly', { weather_forecast: weatherList });
     return response.data;
   },
 
   /**
    * Identify dominant allergens
+   * @param weather - Weather conditions for allergen identification
+   * @param historicalPollen - Optional: Last 7 days of raw pollen counts
+   * @param historicalTemps - Optional: Last 30 days of average temperatures in °F
+   * @param historicalPrecip - Optional: Season-to-date precipitation in inches
+   * @param historicalWind - Optional: Last 30 days of wind speeds in mph
    */
-  async identifyAllergens(weather: WeatherInput): Promise<{
+  async identifyAllergens(
+    weather: WeatherInput,
+    historicalPollen?: number[],
+    historicalTemps?: number[],
+    historicalPrecip?: number[],
+    historicalWind?: number[]
+  ): Promise<{
     date: string;
     total_severity: number;
-    allergen_breakdown: AllergenScore[];
-    dominant_allergen: string;
+    allergens: AllergenScore[];
+    primary_allergen: string;
     alert_level: string;
-    recommendations: string[];
   }> {
-    const response = await api.post('/allergen/identify', weather);
+    const requestBody: any = { weather };
+    if (historicalPollen && historicalPollen.length > 0) {
+      requestBody.historical_pollen = historicalPollen;
+    }
+    if (historicalTemps && historicalTemps.length > 0) {
+      requestBody.historical_temps = historicalTemps;
+    }
+    if (historicalPrecip && historicalPrecip.length > 0) {
+      requestBody.historical_precip = historicalPrecip;
+    }
+    if (historicalWind && historicalWind.length > 0) {
+      requestBody.historical_wind = historicalWind;
+    }
+    const response = await api.post('/allergen/identify', requestBody);
     return response.data;
   },
 

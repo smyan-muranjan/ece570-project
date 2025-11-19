@@ -11,6 +11,7 @@ import { BlurView } from 'expo-blur';
 import { pollenApi, WeatherInput } from '@/services/api';
 import { usePrediction } from '@/contexts/prediction-context';
 import { router } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
@@ -18,12 +19,33 @@ export default function HomeScreen() {
   const { setPrediction, setIsLoading, setError } = usePrediction();
   
   // Form state
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempMax, setTempMax] = useState('');
   const [tempMin, setTempMin] = useState('');
   const [precipitation, setPrecipitation] = useState('0');
   const [windSpeed, setWindSpeed] = useState('');
+  
+  // Advanced optional fields
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [tempAvg, setTempAvg] = useState('');
+  const [yesterdayPollen, setYesterdayPollen] = useState('');
+  const [threeDaysAgoPollen, setThreeDaysAgoPollen] = useState('');
+  const [sevenDaysAgoPollen, setSevenDaysAgoPollen] = useState('');
+  
+  // Additional historical weather (optional for better accuracy)
+  const [avgTempLast30Days, setAvgTempLast30Days] = useState('');
+  const [totalRainThisSeason, setTotalRainThisSeason] = useState('');
+  const [avgWindLast30Days, setAvgWindLast30Days] = useState('');
+  
   const [loading, setLoading] = useState(false);
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+  };
 
   const handlePredict = async () => {
     // Validation
@@ -51,14 +73,62 @@ export default function HomeScreen() {
     
     try {
       const weatherData: WeatherInput = {
-        date,
+        date: date.toISOString().split('T')[0],
         temp_max: max,
         temp_min: min,
         precipitation: parseFloat(precipitation) || 0,
-        wind_speed: parseFloat(windSpeed) || 0,
+        wind_speed: parseFloat(windSpeed) || undefined,
+        temp_avg: tempAvg ? parseFloat(tempAvg) : undefined,
       };
+      
+      // Build historical pollen array if provided
+      const historicalPollen: number[] = [];
+      if (yesterdayPollen) historicalPollen.push(parseFloat(yesterdayPollen));
+      if (threeDaysAgoPollen && historicalPollen.length > 0) {
+        historicalPollen.unshift(parseFloat(threeDaysAgoPollen));
+        historicalPollen.unshift(parseFloat(threeDaysAgoPollen)); // Approximate day 2
+      }
+      if (sevenDaysAgoPollen && historicalPollen.length > 0) {
+        // Fill in missing days with interpolation
+        while (historicalPollen.length < 7) {
+          historicalPollen.unshift(parseFloat(sevenDaysAgoPollen));
+        }
+      }
 
-      const prediction = await pollenApi.getDailyPrediction(weatherData);
+      // Build historical weather arrays if provided
+      const historicalTemps = avgTempLast30Days ? 
+        Array(30).fill(parseFloat(avgTempLast30Days)) : undefined;
+      
+      const historicalPrecip = totalRainThisSeason ?
+        [parseFloat(totalRainThisSeason)] : undefined;
+      
+      const historicalWind = avgWindLast30Days ?
+        Array(30).fill(parseFloat(avgWindLast30Days)) : undefined;
+
+      const prediction = await pollenApi.getDailyPrediction(
+        weatherData, 
+        historicalPollen.length > 0 ? historicalPollen : undefined,
+        historicalTemps,
+        historicalPrecip,
+        historicalWind
+      );
+      
+      // Also get allergen breakdown with same historical data
+      try {
+        const allergenData = await pollenApi.identifyAllergens(
+          weatherData,
+          historicalPollen.length > 0 ? historicalPollen : undefined,
+          historicalTemps,
+          historicalPrecip,
+          historicalWind
+        );
+        prediction.allergen_breakdown = allergenData.allergens;
+        prediction.primary_allergen = allergenData.primary_allergen;
+      } catch (allergenError) {
+        console.warn('Failed to get allergen breakdown:', allergenError);
+        // Continue without allergen data
+      }
+      
       setPrediction(prediction);
       
       // Navigate to results tab
@@ -89,6 +159,13 @@ export default function HomeScreen() {
     setTempMin('');
     setPrecipitation('0');
     setWindSpeed('');
+    setTempAvg('');
+    setYesterdayPollen('');
+    setThreeDaysAgoPollen('');
+    setSevenDaysAgoPollen('');
+    setAvgTempLast30Days('');
+    setTotalRainThisSeason('');
+    setAvgWindLast30Days('');
   };
 
   return (
@@ -148,23 +225,42 @@ export default function HomeScreen() {
               <Text style={[styles.sectionTitle, isDark && styles.subtitleDark]}>
                 PREDICTION DATE
               </Text>
-              <BlurView 
-                intensity={isDark ? 20 : 80} 
-                tint={isDark ? 'dark' : 'light'}
-                style={styles.dateCard}
-              >
-                <View style={styles.dateContent}>
-                  <Ionicons name="calendar" size={24} color={isDark ? '#FFF' : '#007AFF'} />
-                  <Text style={[styles.dateText, isDark && styles.textDark]}>
-                    {new Date(date).toLocaleDateString('en-US', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
-                  </Text>
-                </View>
-              </BlurView>
+              <Pressable onPress={() => setShowDatePicker(true)}>
+                <BlurView 
+                  intensity={isDark ? 20 : 80} 
+                  tint={isDark ? 'dark' : 'light'}
+                  style={styles.dateCard}
+                >
+                  <View style={styles.dateContent}>
+                    <Ionicons name="calendar" size={24} color={isDark ? '#FFF' : '#007AFF'} />
+                    <View style={styles.dateTextContainer}>
+                      <Text style={[styles.dateText, isDark && styles.textDark]}>
+                        {date.toLocaleDateString('en-US', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </Text>
+                      <Text style={[styles.dateHint, isDark && styles.subtitleDark]}>
+                        Tap to change
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                  </View>
+                </BlurView>
+              </Pressable>
+              
+              {showDatePicker && (
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={onDateChange}
+                  minimumDate={new Date(2020, 0, 1)}
+                  maximumDate={new Date(2030, 11, 31)}
+                />
+              )}
             </Animated.View>
 
             {/* Weather Inputs */}
@@ -206,6 +302,15 @@ export default function HomeScreen() {
               />
 
               <WeatherInputField
+                label="Average Temperature (Optional)"
+                value={tempAvg}
+                onChangeText={setTempAvg}
+                placeholder="Auto-calculated if blank"
+                icon="thermometer"
+                unit="°F"
+              />
+
+              <WeatherInputField
                 label="Wind Speed (Optional)"
                 value={windSpeed}
                 onChangeText={setWindSpeed}
@@ -214,6 +319,113 @@ export default function HomeScreen() {
                 unit="mph"
               />
             </Animated.View>
+
+            {/* Advanced Options Toggle */}
+            <Animated.View entering={FadeInDown.delay(350)} style={styles.advancedToggle}>
+              <Pressable 
+                onPress={() => setShowAdvanced(!showAdvanced)}
+                style={styles.advancedToggleButton}
+              >
+                <View style={styles.advancedToggleContent}>
+                  <Ionicons 
+                    name="options" 
+                    size={20} 
+                    color="#007AFF" 
+                    style={styles.advancedToggleIcon}
+                  />
+                  <Text style={[styles.advancedToggleText, isDark && styles.textDark]}>
+                    Advanced Options {showAdvanced ? '(Hide)' : '(Show for Better Accuracy)'}
+                  </Text>
+                  <Ionicons 
+                    name={showAdvanced ? 'chevron-up' : 'chevron-down'} 
+                    size={20} 
+                    color={isDark ? '#8E8E93' : '#3C3C43'}
+                  />
+                </View>
+              </Pressable>
+            </Animated.View>
+
+            {/* Advanced Fields */}
+            {showAdvanced && (
+              <Animated.View entering={FadeInDown.delay(100)} style={styles.advancedSection}>
+                <BlurView 
+                  intensity={isDark ? 20 : 80} 
+                  tint={isDark ? 'dark' : 'light'}
+                  style={styles.advancedContainer}
+                >
+                  <View style={styles.advancedHeader}>
+                    <Ionicons name="information-circle" size={18} color="#007AFF" />
+                    <Text style={[styles.advancedHeaderText, isDark && styles.subtitleDark]}>
+                      Providing these values improves prediction accuracy
+                    </Text>
+                  </View>
+
+                  <View style={styles.divider} />
+                  <Text style={[styles.subsectionTitle, isDark && styles.subtitleDark]}>
+                    HISTORICAL POLLEN (for lag features)
+                  </Text>
+
+                  <WeatherInputField
+                    label="Yesterday's Pollen Count"
+                    value={yesterdayPollen}
+                    onChangeText={setYesterdayPollen}
+                    placeholder="e.g., 45"
+                    icon="leaf"
+                    unit=""
+                  />
+
+                  <WeatherInputField
+                    label="3 Days Ago Pollen Count"
+                    value={threeDaysAgoPollen}
+                    onChangeText={setThreeDaysAgoPollen}
+                    placeholder="e.g., 52"
+                    icon="leaf-outline"
+                    unit=""
+                  />
+
+                  <WeatherInputField
+                    label="7 Days Ago Pollen Count"
+                    value={sevenDaysAgoPollen}
+                    onChangeText={setSevenDaysAgoPollen}
+                    placeholder="e.g., 38"
+                    icon="leaf-outline"
+                    unit=""
+                  />
+
+                  <View style={styles.divider} />
+                  <Text style={[styles.subsectionTitle, isDark && styles.subtitleDark]}>
+                    HISTORICAL WEATHER (for better features)
+                  </Text>
+
+                  <WeatherInputField
+                    label="Avg Temperature (Last 30 Days)"
+                    value={avgTempLast30Days}
+                    onChangeText={setAvgTempLast30Days}
+                    placeholder="e.g., 68"
+                    icon="thermometer"
+                    unit="°F"
+                  />
+
+                  <WeatherInputField
+                    label="Total Rain This Season"
+                    value={totalRainThisSeason}
+                    onChangeText={setTotalRainThisSeason}
+                    placeholder="e.g., 5.2"
+                    icon="rainy"
+                    unit="in"
+                  />
+
+                  <WeatherInputField
+                    label="Avg Wind Speed (Last 30 Days)"
+                    value={avgWindLast30Days}
+                    onChangeText={setAvgWindLast30Days}
+                    placeholder="e.g., 8"
+                    icon="flag"
+                    unit="mph"
+                  />
+                </BlurView>
+              </Animated.View>
+            )}
 
             {/* Action Buttons */}
             <Animated.View entering={FadeInDown.delay(400)} style={styles.buttonSection}>
@@ -370,13 +582,21 @@ const styles = StyleSheet.create({
   dateContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
     gap: 12,
+  },
+  dateTextContainer: {
+    flex: 1,
   },
   dateText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#000',
+  },
+  dateHint: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
   },
   buttonSection: {
     marginBottom: 24,
@@ -429,6 +649,65 @@ const styles = StyleSheet.create({
   featureDesc: {
     fontSize: 14,
     color: '#8E8E93',
+  },
+  advancedToggle: {
+    marginBottom: 16,
+  },
+  advancedToggleButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: isDark => isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+  },
+  advancedToggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 10,
+  },
+  advancedToggleIcon: {
+    marginRight: 2,
+  },
+  advancedToggleText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#000',
+  },
+  advancedSection: {
+    marginBottom: 24,
+  },
+  advancedContainer: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    padding: 16,
+  },
+  advancedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  advancedHeaderText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#8E8E93',
+    fontStyle: 'italic',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(142, 142, 147, 0.2)',
+    marginVertical: 16,
+  },
+  subsectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8E8E93',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
   footer: {
     height: 40,

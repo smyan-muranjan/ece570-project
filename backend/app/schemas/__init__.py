@@ -52,7 +52,19 @@ class DailyPredictionRequest(BaseModel):
     weather: WeatherInput
     historical_pollen: Optional[List[float]] = Field(
         None, 
-        description="Historical pollen counts for lag features (last 7 days)"
+        description="Historical pollen counts for lag features (last 7 days, in raw counts)"
+    )
+    historical_temps: Optional[List[float]] = Field(
+        None,
+        description="Historical average temperatures for last 30 days (°F)"
+    )
+    historical_precip: Optional[List[float]] = Field(
+        None,
+        description="Historical precipitation for season-to-date (inches)"
+    )
+    historical_wind: Optional[List[float]] = Field(
+        None,
+        description="Historical wind speeds for last 30 days (mph)"
     )
 
 
@@ -108,6 +120,22 @@ class AllergenPrediction(BaseModel):
 class AllergenIdentificationRequest(BaseModel):
     """Request for identifying primary allergen drivers"""
     weather: WeatherInput
+    historical_pollen: Optional[List[float]] = Field(
+        None, 
+        description="Historical pollen counts for lag features (last 7 days, in raw counts)"
+    )
+    historical_temps: Optional[List[float]] = Field(
+        None,
+        description="Historical average temperatures for last 30 days (°F)"
+    )
+    historical_precip: Optional[List[float]] = Field(
+        None,
+        description="Historical precipitation for season-to-date (inches)"
+    )
+    historical_wind: Optional[List[float]] = Field(
+        None,
+        description="Historical wind speeds for last 30 days (mph)"
+    )
     
 
 class AllergenIdentificationResponse(BaseModel):
