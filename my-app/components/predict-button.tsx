@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 interface PredictButtonProps {
@@ -24,16 +24,16 @@ export function PredictButton({ onPress, disabled = false, loading = false }: Pr
         pressed && styles.pressed,
       ]}
     >
-      <LinearGradient
-        colors={disabled || loading 
-          ? ['#8E8E93', '#8E8E93'] as const
-          : isDark
-          ? ['#0A84FF', '#0066CC'] as const
-          : ['#007AFF', '#0051D5'] as const
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.gradient}
+      <View
+        style={[
+          styles.gradient,
+          Shadows.elevated,
+          {
+            backgroundColor: disabled || loading 
+              ? (isDark ? Colors.dark.labelTertiary : Colors.light.labelTertiary)
+              : (isDark ? Colors.dark.systemBlue : Colors.light.systemBlue)
+          }
+        ]}
       >
         <View style={styles.content}>
           {loading ? (
@@ -48,33 +48,27 @@ export function PredictButton({ onPress, disabled = false, loading = false }: Pr
             </>
           )}
         </View>
-      </LinearGradient>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 5,
   },
   gradient: {
-    paddingVertical: 18,
+    paddingVertical: Spacing.md + 2,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: Spacing.sm,
   },
   text: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...Typography.headline,
     color: '#FFF',
   },
   disabled: {

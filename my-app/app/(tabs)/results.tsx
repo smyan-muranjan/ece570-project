@@ -1,11 +1,9 @@
 import React from 'react';
 import { StyleSheet, ScrollView, View, Text, StatusBar, Pressable } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { PollenColors, AllergenColors } from '@/constants/theme';
+import { PollenColors, AllergenColors, Colors, Typography, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
 import { usePrediction } from '@/contexts/prediction-context';
 
 export default function ResultsScreen() {
@@ -43,23 +41,22 @@ export default function ResultsScreen() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <LinearGradient
-          colors={isDark 
-            ? ['#000000', '#1C1C1E'] as const
-            : ['#F2F2F7', '#E5E5EA'] as const
-          }
-          style={styles.background}
+        <View 
+          style={[
+            styles.background, 
+            { backgroundColor: isDark ? Colors.dark.systemBackground : Colors.light.systemGroupedBackground }
+          ]}
         >
           <View style={styles.emptyState}>
             <Ionicons name="analytics-outline" size={80} color="#8E8E93" />
-            <Text style={[styles.emptyTitle, isDark && styles.textDark]}>
+            <Text style={[styles.emptyTitle, { color: isDark ? Colors.dark.label : Colors.light.label }]}>
               No Predictions Yet
             </Text>
-            <Text style={[styles.emptySubtitle, isDark && styles.subtitleDark]}>
+            <Text style={[styles.emptySubtitle, { color: isDark ? Colors.dark.labelSecondary : Colors.light.labelSecondary }]}>
               Make your first prediction on the Predict tab
             </Text>
           </View>
-        </LinearGradient>
+        </View>
       </View>
     );
   }
@@ -68,12 +65,11 @@ export default function ResultsScreen() {
     <View style={styles.container}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      <LinearGradient
-        colors={isDark 
-          ? ['#000000', '#1C1C1E', '#1C1C1E'] as const
-          : ['#E3F2FD', '#BBDEFB', '#F2F2F7'] as const
-        }
-        style={styles.background}
+      <View 
+        style={[
+          styles.background, 
+          { backgroundColor: isDark ? Colors.dark.systemBackground : Colors.light.systemGroupedBackground }
+        ]}
       >
         <ScrollView 
           style={styles.scrollView}
@@ -82,22 +78,26 @@ export default function ResultsScreen() {
         >
           {/* Header */}
           <Animated.View entering={FadeIn} style={styles.header}>
-            <Text style={[styles.title, isDark && styles.textDark]}>
+            <Text style={[styles.title, { color: isDark ? Colors.dark.label : Colors.light.label }]}>
               Prediction Results
             </Text>
-            <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
+            <Text style={[styles.subtitle, { color: isDark ? Colors.dark.labelSecondary : Colors.light.labelSecondary }]}>
               {formatDate(prediction.prediction.date)}
             </Text>
           </Animated.View>
 
           {/* Main Severity Card */}
           <Animated.View entering={FadeInDown.delay(100)}>
-            <LinearGradient
-              colors={[
-                getSeverityColor(prediction.prediction.severity_score) + '40',
-                getSeverityColor(prediction.prediction.severity_score) + '20',
-              ] as const}
-              style={styles.severityCard}
+            <View 
+              style={[
+                styles.severityCard,
+                Shadows.elevated,
+                { 
+                  backgroundColor: isDark ? Colors.dark.secondarySystemGroupedBackground : Colors.light.systemBackground,
+                  borderWidth: isDark ? 0 : StyleSheet.hairlineWidth,
+                  borderColor: isDark ? 'transparent' : Colors.light.separator,
+                }
+              ]}
             >
               <View style={styles.severityContent}>
                 <View style={styles.severityTop}>
@@ -115,59 +115,43 @@ export default function ResultsScreen() {
                 </View>
 
                 <View style={styles.confidenceContainer}>
-                  <Ionicons name="rocket" size={16} color={getSeverityColor(prediction.prediction.severity_score)} />
-                  <Text style={[styles.confidenceText, isDark && styles.textDark]}>
-                    {((prediction.prediction.confidence || 0) * 100).toFixed(0)}% Confidence • Weather-Only Model
+                  <Ionicons name="shield-checkmark" size={16} color={getSeverityColor(prediction.prediction.severity_score)} />
+                  <Text style={[styles.confidenceText, { color: isDark ? Colors.dark.label : Colors.light.label }]}>
+                    {((prediction.prediction.confidence || 0) * 100).toFixed(0)}% Model Confidence
                   </Text>
                 </View>
               </View>
-            </LinearGradient>
+            </View>
           </Animated.View>
 
-          {/* Model Info */}
-          <Animated.View entering={FadeInDown.delay(150)}>
-            <BlurView 
-              intensity={isDark ? 20 : 80} 
-              tint={isDark ? 'dark' : 'light'}
-              style={styles.modelInfoCard}
-            >
-              <View style={styles.modelInfoContent}>
-                <View style={styles.modelInfoIcon}>
-                  <Ionicons name="flash" size={20} color="#30D158" />
-                </View>
-                <View style={styles.modelInfoText}>
-                  <Text style={[styles.modelInfoTitle, isDark && styles.textDark]}>
-                    Advanced Weather-Only Model
-                  </Text>
-                  <Text style={[styles.modelInfoDesc, isDark && styles.subtitleDark]}>
-                    Uses VPD, Ventilation Index, and biological features • 47.9% better accuracy
-                  </Text>
-                </View>
-              </View>
-            </BlurView>
-          </Animated.View>
 
           {/* Recommendation */}
           <Animated.View entering={FadeInDown.delay(200)}>
-            <BlurView 
-              intensity={isDark ? 20 : 80} 
-              tint={isDark ? 'dark' : 'light'}
-              style={styles.recommendationCard}
+            <View 
+              style={[
+                styles.recommendationCard,
+                Shadows.card,
+                { 
+                  backgroundColor: isDark ? Colors.dark.secondarySystemGroupedBackground : Colors.light.systemBackground,
+                  borderWidth: isDark ? 0 : StyleSheet.hairlineWidth,
+                  borderColor: isDark ? 'transparent' : Colors.light.separator,
+                }
+              ]}
             >
               <View style={styles.recommendationContent}>
                 <View style={[styles.iconCircle, { backgroundColor: getSeverityColor(prediction.prediction.severity_score) + '20' }]}>
                   <Ionicons name="warning" size={24} color={getSeverityColor(prediction.prediction.severity_score)} />
                 </View>
                 <View style={styles.recommendationText}>
-                  <Text style={[styles.recommendationTitle, isDark && styles.textDark]}>
+                  <Text style={[styles.recommendationTitle, { color: isDark ? Colors.dark.label : Colors.light.label }]}>
                     Health Advisory
                   </Text>
-                  <Text style={[styles.recommendationDesc, isDark && styles.subtitleDark]}>
+                  <Text style={[styles.recommendationDesc, { color: isDark ? Colors.dark.labelSecondary : Colors.light.labelSecondary }]}>
                     {prediction.recommendation}
                   </Text>
                 </View>
               </View>
-            </BlurView>
+            </View>
           </Animated.View>
 
           {/* Allergen Breakdown */}
@@ -199,11 +183,17 @@ export default function ResultsScreen() {
 
               {/* Allergen Cards */}
               {prediction.allergen_breakdown.map((allergen, index) => (
-                <BlurView 
+                <View 
                   key={allergen.allergen_type}
-                  intensity={isDark ? 20 : 80} 
-                  tint={isDark ? 'dark' : 'light'}
-                  style={styles.allergenCard}
+                  style={[
+                    styles.allergenCard,
+                    Shadows.card,
+                    { 
+                      backgroundColor: isDark ? Colors.dark.secondarySystemGroupedBackground : Colors.light.systemBackground,
+                      borderWidth: isDark ? 0 : StyleSheet.hairlineWidth,
+                      borderColor: isDark ? 'transparent' : Colors.light.separator,
+                    }
+                  ]}
                 >
                   <View style={styles.allergenContent}>
                     <View style={[styles.allergenIcon, { backgroundColor: getAllergenColor(allergen.allergen_type) + '20' }]}>
@@ -211,17 +201,17 @@ export default function ResultsScreen() {
                     </View>
                     
                     <View style={styles.allergenDetails}>
-                      <Text style={[styles.allergenName, isDark && styles.textDark]}>
+                      <Text style={[styles.allergenName, { color: isDark ? Colors.dark.label : Colors.light.label }]}>
                         {allergen.allergen_type}
                       </Text>
                       <View style={styles.allergenStats}>
                         <Text style={[styles.allergenPercentage, { color: getAllergenColor(allergen.allergen_type) }]}>
                           {allergen.contribution_pct.toFixed(1)}%
                         </Text>
-                        <Text style={[styles.allergenSeparator, isDark && styles.subtitleDark]}>
+                        <Text style={[styles.allergenSeparator, { color: isDark ? Colors.dark.labelSecondary : Colors.light.labelSecondary }]}>
                           •
                         </Text>
-                        <Text style={[styles.allergenSeverity, isDark && styles.subtitleDark]}>
+                        <Text style={[styles.allergenSeverity, { color: isDark ? Colors.dark.labelSecondary : Colors.light.labelSecondary }]}>
                           Severity: {allergen.severity_score.toFixed(1)}
                         </Text>
                       </View>
@@ -241,7 +231,7 @@ export default function ResultsScreen() {
                       </View>
                     </View>
                   </View>
-                </BlurView>
+                </View>
               ))}
             </Animated.View>
           )}
@@ -249,21 +239,22 @@ export default function ResultsScreen() {
           {/* Action Button */}
           <Animated.View entering={FadeInDown.delay(400)} style={styles.actionSection}>
             <Pressable style={styles.newPredictionButton}>
-              <LinearGradient
-                colors={['#007AFF', '#0051D5'] as const}
-                style={styles.buttonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+              <View 
+                style={[
+                  styles.buttonGradient,
+                  Shadows.card,
+                  { backgroundColor: isDark ? Colors.dark.systemBlue : Colors.light.systemBlue }
+                ]}
               >
                 <Ionicons name="add-circle-outline" size={24} color="#FFF" />
                 <Text style={styles.buttonText}>Make New Prediction</Text>
-              </LinearGradient>
+              </View>
             </Pressable>
           </Animated.View>
 
           <View style={styles.footer} />
         </ScrollView>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -279,42 +270,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
+    paddingTop: Spacing.xxxl + Spacing.md,
+    paddingHorizontal: Spacing.md,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: Spacing.lg,
   },
   title: {
-    fontSize: 34,
+    ...Typography.largeTitle,
     fontWeight: '700',
-    color: '#000',
-    marginBottom: 4,
-    letterSpacing: -0.5,
+    marginBottom: Spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#8E8E93',
-    fontWeight: '400',
+    ...Typography.callout,
   },
   subtitleDark: {
-    color: '#8E8E93',
+    // Will be handled by theme colors
   },
   textDark: {
-    color: '#FFF',
+    // Will be handled by theme colors
   },
   severityCard: {
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   severityContent: {
-    gap: 16,
+    gap: Spacing.md,
   },
   severityTop: {
     flexDirection: 'row',
@@ -322,9 +304,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   severityLabel: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 8,
+    ...Typography.subheadline,
+    marginBottom: Spacing.xs,
     fontWeight: '500',
   },
   severityValue: {
@@ -333,76 +314,38 @@ const styles = StyleSheet.create({
     letterSpacing: -2,
   },
   severityBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.xl,
   },
   severityBadgeText: {
-    fontSize: 14,
+    ...Typography.subheadline,
     fontWeight: '600',
     color: '#FFF',
   },
   confidenceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: Spacing.xs,
   },
   confidenceText: {
-    fontSize: 14,
+    ...Typography.subheadline,
     fontWeight: '500',
-    color: '#000',
-  },
-  modelInfoCard: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(48, 209, 88, 0.3)',
-    marginBottom: 16,
-  },
-  modelInfoContent: {
-    flexDirection: 'row',
-    padding: 12,
-    gap: 10,
-    alignItems: 'center',
-  },
-  modelInfoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: 'rgba(48, 209, 88, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modelInfoText: {
-    flex: 1,
-  },
-  modelInfoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 2,
-  },
-  modelInfoDesc: {
-    fontSize: 12,
-    color: '#8E8E93',
-    lineHeight: 16,
   },
   recommendationCard: {
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    marginBottom: 24,
+    marginBottom: Spacing.lg,
   },
   recommendationContent: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 12,
+    padding: Spacing.md,
+    gap: Spacing.sm,
   },
   iconCircle: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -410,15 +353,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   recommendationTitle: {
-    fontSize: 16,
+    ...Typography.callout,
     fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
   recommendationDesc: {
-    fontSize: 14,
+    ...Typography.subheadline,
     lineHeight: 20,
-    color: '#8E8E93',
   },
   section: {
     marginBottom: 24,
@@ -552,21 +493,19 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: Spacing.xl,
   },
   emptyTitle: {
-    fontSize: 24,
+    ...Typography.title2,
     fontWeight: '600',
-    color: '#000',
-    marginTop: 20,
-    marginBottom: 8,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xs,
   },
   emptySubtitle: {
-    fontSize: 16,
-    color: '#8E8E93',
+    ...Typography.callout,
     textAlign: 'center',
   },
   footer: {
-    height: 40,
+    height: Spacing.xl,
   },
 });

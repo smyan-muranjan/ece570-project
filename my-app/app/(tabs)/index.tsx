@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { StyleSheet, ScrollView, View, Text, StatusBar, Pressable, Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { WeatherInputField } from '@/components/weather-input-field';
 import { PredictButton } from '@/components/predict-button';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
 import { pollenApi, WeatherInput } from '@/services/api';
 import { usePrediction } from '@/contexts/prediction-context';
 import { router } from 'expo-router';
@@ -172,13 +170,12 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       
-      <LinearGradient
-        colors={isDark 
-          ? ['#000000', '#1C1C1E', '#1C1C1E'] as const
-          : ['#E3F2FD', '#BBDEFB', '#90CAF9'] as const
-        }
-        style={styles.background}
-      >
+        <View 
+          style={[
+            styles.background, 
+            { backgroundColor: isDark ? Colors.dark.systemBackground : Colors.light.systemGroupedBackground }
+          ]}
+        >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -192,64 +189,58 @@ export default function HomeScreen() {
             {/* Header */}
             <Animated.View entering={FadeIn} style={styles.header}>
               <View>
-                <Text style={[styles.title, isDark && styles.textDark]}>
+                <Text style={[styles.title, { color: isDark ? Colors.dark.label : Colors.light.label }]}>
                   Pollen Predictor
                 </Text>
-                <Text style={[styles.subtitle, isDark && styles.subtitleDark]}>
-                  Advanced weather-only predictions
+                <Text style={[styles.subtitle, { color: isDark ? Colors.dark.labelSecondary : Colors.light.labelSecondary }]}>
+                  Enter your local weather data
                 </Text>
               </View>
               <Pressable style={styles.infoButton}>
-                <Ionicons name="information-circle-outline" size={28} color={isDark ? '#FFF' : '#007AFF'} />
+                <Ionicons 
+                  name="information-circle-outline" 
+                  size={28} 
+                  color={isDark ? Colors.dark.systemBlue : Colors.light.systemBlue} 
+                />
               </Pressable>
             </Animated.View>
 
-            {/* Info Card */}
-            <Animated.View entering={FadeInDown.delay(100)}>
-              <BlurView 
-                intensity={isDark ? 20 : 80} 
-                tint={isDark ? 'dark' : 'light'}
-                style={styles.infoCard}
-              >
-                <View style={styles.infoContent}>
-                  <Ionicons name="rocket-outline" size={24} color="#30D158" />
-                  <Text style={[styles.infoText, isDark && styles.textDark]}>
-                    <Text style={styles.infoHighlight}>NEW:</Text> Weather-only trained models with 47.9% better accuracy! 
-                    Advanced biological features like VPD and Ventilation Index.
-                  </Text>
-                </View>
-              </BlurView>
-            </Animated.View>
 
             {/* Date Section */}
             <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
-              <Text style={[styles.sectionTitle, isDark && styles.subtitleDark]}>
-                PREDICTION DATE
-              </Text>
+                <Text style={[styles.sectionTitle, { color: isDark ? Colors.dark.labelTertiary : Colors.light.labelTertiary }]}>
+                  PREDICTION DATE
+                </Text>
               <Pressable onPress={() => setShowDatePicker(true)}>
-                <BlurView 
-                  intensity={isDark ? 20 : 80} 
-                  tint={isDark ? 'dark' : 'light'}
-                  style={styles.dateCard}
+                <View 
+                  style={[
+                    styles.dateCard, 
+                    Shadows.card,
+                    { 
+                      backgroundColor: isDark ? Colors.dark.secondarySystemGroupedBackground : Colors.light.systemBackground,
+                      borderWidth: isDark ? 0 : StyleSheet.hairlineWidth,
+                      borderColor: isDark ? 'transparent' : Colors.light.separator,
+                    }
+                  ]}
                 >
                   <View style={styles.dateContent}>
                     <Ionicons name="calendar" size={24} color={isDark ? '#FFF' : '#007AFF'} />
                     <View style={styles.dateTextContainer}>
-                      <Text style={[styles.dateText, isDark && styles.textDark]}>
-                        {date.toLocaleDateString('en-US', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </Text>
-                      <Text style={[styles.dateHint, isDark && styles.subtitleDark]}>
-                        Tap to change
-                      </Text>
+                    <Text style={[styles.dateText, { color: isDark ? Colors.dark.label : Colors.light.label }]}>
+                      {date.toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </Text>
+                    <Text style={[styles.dateHint, { color: isDark ? Colors.dark.labelSecondary : Colors.light.labelSecondary }]}>
+                      Tap to change
+                    </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                    <Ionicons name="chevron-forward" size={20} color={isDark ? Colors.dark.labelTertiary : Colors.light.labelTertiary} />
                   </View>
-                </BlurView>
+                </View>
               </Pressable>
               
               {showDatePicker && (
@@ -267,11 +258,22 @@ export default function HomeScreen() {
             {/* Weather Inputs */}
             <Animated.View entering={FadeInDown.delay(300)} style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, isDark && styles.subtitleDark]}>
+                <Text style={[styles.sectionTitle, { color: isDark ? Colors.dark.labelTertiary : Colors.light.labelTertiary }]}>
                   WEATHER CONDITIONS
                 </Text>
-                <Pressable onPress={fillSampleData} style={styles.fillButton}>
-                  <Text style={styles.fillButtonText}>Fill Sample</Text>
+                <Pressable 
+                  onPress={fillSampleData} 
+                  style={[
+                    styles.fillButton, 
+                    { backgroundColor: isDark ? Colors.dark.systemBlue + '20' : Colors.light.systemBlue + '15' }
+                  ]}
+                >
+                  <Text style={[
+                    styles.fillButtonText, 
+                    { color: isDark ? Colors.dark.systemBlue : Colors.light.systemBlue }
+                  ]}>
+                    Fill Sample
+                  </Text>
                 </Pressable>
               </View>
 
@@ -349,20 +351,26 @@ export default function HomeScreen() {
             {/* Advanced Fields */}
             {showAdvanced && (
               <Animated.View entering={FadeInDown.delay(100)} style={styles.advancedSection}>
-                <BlurView 
-                  intensity={isDark ? 20 : 80} 
-                  tint={isDark ? 'dark' : 'light'}
-                  style={styles.advancedContainer}
+                <View 
+                  style={[
+                    styles.advancedContainer,
+                    Shadows.card,
+                    { 
+                      backgroundColor: isDark ? Colors.dark.secondarySystemGroupedBackground : Colors.light.systemBackground,
+                      borderWidth: isDark ? 0 : StyleSheet.hairlineWidth,
+                      borderColor: isDark ? 'transparent' : Colors.light.separator,
+                    }
+                  ]}
                 >
                   <View style={styles.advancedHeader}>
                     <Ionicons name="information-circle" size={18} color="#30D158" />
-                    <Text style={[styles.advancedHeaderText, isDark && styles.subtitleDark]}>
+                    <Text style={[styles.advancedHeaderText, { color: isDark ? Colors.dark.labelSecondary : Colors.light.labelSecondary }]}>
                       Optional data - weather-only models work great without these!
                     </Text>
                   </View>
 
-                  <View style={styles.divider} />
-                  <Text style={[styles.subsectionTitle, isDark && styles.subtitleDark]}>
+                  <View style={[styles.divider, { backgroundColor: isDark ? Colors.dark.separator : Colors.light.separator }]} />
+                  <Text style={[styles.subsectionTitle, { color: isDark ? Colors.dark.labelTertiary : Colors.light.labelTertiary }]}>
                     HISTORICAL POLLEN (optional - not required for weather-only models)
                   </Text>
 
@@ -393,8 +401,8 @@ export default function HomeScreen() {
                     unit=""
                   />
 
-                  <View style={styles.divider} />
-                  <Text style={[styles.subsectionTitle, isDark && styles.subtitleDark]}>
+                  <View style={[styles.divider, { backgroundColor: isDark ? Colors.dark.separator : Colors.light.separator }]} />
+                  <Text style={[styles.subsectionTitle, { color: isDark ? Colors.dark.labelTertiary : Colors.light.labelTertiary }]}>
                     HISTORICAL WEATHER (improves biological feature calculations)
                   </Text>
 
@@ -424,7 +432,7 @@ export default function HomeScreen() {
                     icon="flag"
                     unit="mph"
                   />
-                </BlurView>
+                </View>
               </Animated.View>
             )}
 
@@ -437,51 +445,17 @@ export default function HomeScreen() {
               />
               
               <Pressable onPress={clearForm} style={styles.clearButton}>
-                <Text style={[styles.clearButtonText, isDark && styles.clearButtonTextDark]}>
+                <Text style={[styles.clearButtonText, { color: isDark ? Colors.dark.systemRed : Colors.light.systemRed }]}>
                   Clear Form
                 </Text>
               </Pressable>
             </Animated.View>
 
-            {/* Features Info */}
-            <Animated.View entering={FadeInDown.delay(500)} style={styles.featuresSection}>
-              <Text style={[styles.sectionTitle, isDark && styles.subtitleDark]}>
-                WHAT YOU'LL GET
-              </Text>
-              
-              {[
-                { icon: 'analytics', title: 'Advanced Pollen Prediction', desc: 'Weather-only trained models with 84% accuracy' },
-                { icon: 'leaf', title: 'Specialized Allergen Models', desc: 'Separate models for Tree, Grass, Ragweed, Weed' },
-                { icon: 'flash', title: 'Biological Features', desc: 'VPD, Ventilation Index, Osmotic Shock calculations' },
-                { icon: 'shield-checkmark', title: 'Health Recommendations', desc: 'Personalized advice based on severity' },
-              ].map((feature, index) => (
-                <BlurView 
-                  key={feature.title}
-                  intensity={isDark ? 20 : 80} 
-                  tint={isDark ? 'dark' : 'light'}
-                  style={styles.featureCard}
-                >
-                  <View style={styles.featureContent}>
-                    <View style={[styles.featureIcon, { backgroundColor: isDark ? '#007AFF20' : '#007AFF15' }]}>
-                      <Ionicons name={feature.icon as any} size={24} color="#007AFF" />
-                    </View>
-                    <View style={styles.featureText}>
-                      <Text style={[styles.featureTitle, isDark && styles.textDark]}>
-                        {feature.title}
-                      </Text>
-                      <Text style={[styles.featureDesc, isDark && styles.subtitleDark]}>
-                        {feature.desc}
-                      </Text>
-                    </View>
-                  </View>
-                </BlurView>
-              ))}
-            </Animated.View>
 
             <View style={styles.footer} />
           </ScrollView>
         </KeyboardAvoidingView>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -500,222 +474,161 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
+    paddingTop: Spacing.xxxl + Spacing.md,
+    paddingHorizontal: Spacing.md,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: Spacing.lg,
   },
   title: {
-    fontSize: 34,
+    ...Typography.largeTitle,
     fontWeight: '700',
-    color: '#000',
-    marginBottom: 4,
-    letterSpacing: -0.5,
+    marginBottom: Spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#8E8E93',
-    fontWeight: '400',
+    ...Typography.subheadline,
   },
   subtitleDark: {
-    color: '#8E8E93',
+    // Will be handled by theme colors
   },
   textDark: {
-    color: '#FFF',
+    // Will be handled by theme colors
   },
   infoButton: {
-    padding: 4,
+    padding: Spacing.xs,
   },
   infoCard: {
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    marginBottom: 24,
+    marginBottom: Spacing.lg,
   },
   infoContent: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 12,
+    padding: Spacing.md,
+    gap: Spacing.sm,
     alignItems: 'center',
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#000',
-  },
-  infoHighlight: {
-    fontWeight: '700',
-    color: '#30D158',
+    ...Typography.callout,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: Spacing.lg,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
   },
   sectionTitle: {
-    fontSize: 13,
+    ...Typography.caption1,
     fontWeight: '600',
-    color: '#8E8E93',
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   fillButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 122, 255, 0.15)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
   },
   fillButtonText: {
-    fontSize: 13,
+    ...Typography.caption1,
     fontWeight: '600',
-    color: '#007AFF',
   },
   dateCard: {
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   dateContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    gap: 12,
+    padding: Spacing.md,
+    gap: Spacing.sm,
   },
   dateTextContainer: {
     flex: 1,
   },
   dateText: {
-    fontSize: 16,
+    ...Typography.callout,
     fontWeight: '600',
-    color: '#000',
   },
   dateHint: {
-    fontSize: 13,
-    color: '#8E8E93',
+    ...Typography.caption1,
     marginTop: 2,
   },
   buttonSection: {
-    marginBottom: 24,
+    marginBottom: Spacing.lg,
   },
   clearButton: {
     alignItems: 'center',
-    paddingVertical: 16,
-    marginTop: 12,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.sm,
   },
   clearButtonText: {
-    fontSize: 16,
+    ...Typography.callout,
     fontWeight: '600',
-    color: '#FF453A',
   },
   clearButtonTextDark: {
-    color: '#FF6961',
-  },
-  featuresSection: {
-    marginBottom: 24,
-  },
-  featureCard: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    marginBottom: 8,
-  },
-  featureContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
-  },
-  featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureText: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 2,
-  },
-  featureDesc: {
-    fontSize: 14,
-    color: '#8E8E93',
+    // Will be handled by theme colors
   },
   advancedToggle: {
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
   advancedToggleButton: {
-    borderRadius: 12,
+    borderRadius: BorderRadius.md,
     overflow: 'hidden',
-    backgroundColor: isDark => isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
   },
   advancedToggleContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    gap: 10,
+    padding: Spacing.sm,
+    gap: Spacing.sm,
   },
   advancedToggleIcon: {
     marginRight: 2,
   },
   advancedToggleText: {
     flex: 1,
-    fontSize: 15,
+    ...Typography.subheadline,
     fontWeight: '500',
-    color: '#000',
   },
   advancedSection: {
-    marginBottom: 24,
+    marginBottom: Spacing.lg,
   },
   advancedContainer: {
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 16,
+    padding: Spacing.md,
   },
   advancedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-    paddingHorizontal: 4,
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
+    paddingHorizontal: Spacing.xs,
   },
   advancedHeaderText: {
     flex: 1,
-    fontSize: 13,
-    color: '#8E8E93',
+    ...Typography.caption1,
     fontStyle: 'italic',
   },
   divider: {
-    height: 1,
-    backgroundColor: 'rgba(142, 142, 147, 0.2)',
-    marginVertical: 16,
+    height: StyleSheet.hairlineWidth,
+    marginVertical: Spacing.md,
   },
   subsectionTitle: {
-    fontSize: 12,
+    ...Typography.caption2,
     fontWeight: '600',
-    color: '#8E8E93',
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 12,
-    paddingHorizontal: 4,
+    marginBottom: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
   },
   footer: {
-    height: 40,
+    height: Spacing.xl,
   },
 });

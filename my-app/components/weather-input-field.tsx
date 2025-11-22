@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, View, Text, TextInput, Pressable } from 'react-native';
-import { BlurView } from 'expo-blur';
+import { StyleSheet, View, Text, TextInput } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 interface WeatherInputFieldProps {
@@ -27,59 +27,59 @@ export function WeatherInputField({
   const isDark = colorScheme === 'dark';
 
   return (
-    <BlurView 
-      intensity={isDark ? 20 : 80} 
-      tint={isDark ? 'dark' : 'light'}
-      style={styles.container}
+    <View 
+      style={[
+        styles.container,
+        Shadows.card,
+        { 
+          backgroundColor: isDark ? Colors.dark.secondarySystemGroupedBackground : Colors.light.systemBackground,
+          borderWidth: isDark ? 0 : StyleSheet.hairlineWidth,
+          borderColor: isDark ? 'transparent' : Colors.light.separator,
+        }
+      ]}
     >
       <View style={styles.content}>
         <View style={styles.header}>
-          <Ionicons name={icon} size={20} color={isDark ? '#FFF' : '#007AFF'} />
-          <Text style={[styles.label, isDark && styles.labelDark]}>{label}</Text>
+          <Ionicons name={icon} size={20} color={isDark ? Colors.dark.systemBlue : Colors.light.systemBlue} />
+          <Text style={[styles.label, { color: isDark ? Colors.dark.label : Colors.light.label }]}>{label}</Text>
         </View>
         
         <View style={styles.inputContainer}>
           <TextInput
-            style={[styles.input, isDark && styles.inputDark]}
+            style={[styles.input, { color: isDark ? Colors.dark.label : Colors.light.label }]}
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            placeholderTextColor="#8E8E93"
+            placeholderTextColor={isDark ? Colors.dark.labelTertiary : Colors.light.labelTertiary}
             keyboardType={keyboardType}
           />
           {unit && (
-            <Text style={[styles.unit, isDark && styles.unitDark]}>{unit}</Text>
+            <Text style={[styles.unit, { color: isDark ? Colors.dark.labelSecondary : Colors.light.labelSecondary }]}>{unit}</Text>
           )}
         </View>
       </View>
-    </BlurView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
   },
   content: {
-    padding: 16,
+    padding: Spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
   },
   label: {
-    fontSize: 14,
+    ...Typography.subheadline,
     fontWeight: '600',
-    color: '#000',
-  },
-  labelDark: {
-    color: '#FFF',
   },
   inputContainer: {
     flexDirection: 'row',
@@ -89,19 +89,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 24,
     fontWeight: '500',
-    color: '#000',
     padding: 0,
-  },
-  inputDark: {
-    color: '#FFF',
   },
   unit: {
     fontSize: 20,
     fontWeight: '500',
-    color: '#8E8E93',
-    marginLeft: 8,
-  },
-  unitDark: {
-    color: '#8E8E93',
+    marginLeft: Spacing.xs,
   },
 });
