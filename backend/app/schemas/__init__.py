@@ -48,28 +48,28 @@ class WeatherInput(BaseModel):
 
 
 class DailyPredictionRequest(BaseModel):
-    """Request for daily pollen prediction"""
+    """Request for daily pollen prediction using weather-only trained models"""
     weather: WeatherInput
     historical_pollen: Optional[List[float]] = Field(
         None, 
-        description="Historical pollen counts for lag features (last 7 days, in raw counts)"
+        description="Optional historical pollen counts (not required for weather-only models, but can improve accuracy if available)"
     )
     historical_temps: Optional[List[float]] = Field(
         None,
-        description="Historical average temperatures for last 30 days (°F)"
+        description="Optional historical average temperatures for last 30 days (°F) - improves weather dynamics calculations"
     )
     historical_precip: Optional[List[float]] = Field(
         None,
-        description="Historical precipitation for season-to-date (inches)"
+        description="Optional historical precipitation for season-to-date (inches) - improves seasonal patterns"
     )
     historical_wind: Optional[List[float]] = Field(
         None,
-        description="Historical wind speeds for last 30 days (mph)"
+        description="Optional historical wind speeds for last 30 days (mph) - improves ventilation calculations"
     )
 
 
 class WeeklyPredictionRequest(BaseModel):
-    """Request for weekly pollen forecast"""
+    """Request for weekly pollen forecast using weather-only trained models"""
     weather_forecast: List[WeatherInput] = Field(
         ..., 
         min_items=1, 
@@ -78,7 +78,7 @@ class WeeklyPredictionRequest(BaseModel):
     )
     current_pollen: Optional[float] = Field(
         None,
-        description="Current pollen count for lag features"
+        description="Optional current pollen count (not required for weather-only models)"
     )
 
 
@@ -118,23 +118,23 @@ class AllergenPrediction(BaseModel):
 
 
 class AllergenIdentificationRequest(BaseModel):
-    """Request for identifying primary allergen drivers"""
+    """Request for identifying primary allergen drivers using weather-only trained models"""
     weather: WeatherInput
     historical_pollen: Optional[List[float]] = Field(
         None, 
-        description="Historical pollen counts for lag features (last 7 days, in raw counts)"
+        description="Optional historical pollen counts (not required for weather-only models)"
     )
     historical_temps: Optional[List[float]] = Field(
         None,
-        description="Historical average temperatures for last 30 days (°F)"
+        description="Optional historical average temperatures for last 30 days (°F) - improves accuracy"
     )
     historical_precip: Optional[List[float]] = Field(
         None,
-        description="Historical precipitation for season-to-date (inches)"
+        description="Optional historical precipitation for season-to-date (inches) - improves seasonal patterns"
     )
     historical_wind: Optional[List[float]] = Field(
         None,
-        description="Historical wind speeds for last 30 days (mph)"
+        description="Optional historical wind speeds for last 30 days (mph) - improves ventilation calculations"
     )
     
 

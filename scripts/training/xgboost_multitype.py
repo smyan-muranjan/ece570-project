@@ -280,6 +280,235 @@ def comprehensive_metrics(y_true, y_pred):
 
 
 # ============================================================================
+# WEATHER-ONLY EVALUATION
+# ============================================================================
+
+def evaluate_weather_only_performance(models_dict, df, feature_cols):
+    """
+    Evaluate model performance using ONLY weather + date features
+    Simulates user input scenario: TMAX, TMIN, AWND, PRCP, Date
+    
+    Args:
+        models_dict: Dictionary of trained models {pollen_type: model}
+        df: Full dataframe with all features
+        feature_cols: List of all features used in training
+    
+    Returns:
+        Dictionary with weather-only evaluation metrics for each pollen type
+    """
+    print("\n" + "="*70)
+    print("🌦️  WEATHER-ONLY EVALUATION")
+    print("="*70)
+    print("Simulating user input scenario with only:")
+    print("  • Date (for temporal features)")
+    print("  • TMAX (maximum temperature)")
+    print("  • TMIN (minimum temperature)")
+    print("  • AWND (wind speed)")
+    print("  • PRCP (precipitation)")
+    print("="*70)
+    
+    # Define base weather features that would be available from user input
+    base_weather_inputs = ['TMAX', 'TMIN', 'AWND', 'PRCP']
+    
+    # Identify which engineered features can be derived from base inputs + date
+    # These are features we can compute without historical pollen data
+    weather_derivable_features = []
+    
+    for feat in feature_cols:
+        # Date-based features (always available from date input)
+        if any(x in feat for x in ['Month_', 'DOY_', 'Day_of_Week', 'Year_Numeric', 'Month_Numeric']):
+            weather_derivable_features.append(feat)
+        # Direct weather features
+        elif feat in base_weather_inputs:
+            weather_derivable_features.append(feat)
+        # Weather-derived features (no pollen data needed)
+        elif feat in ['TAVG', 'Temp_Range', 'Is_Rainy']:
+            weather_derivable_features.append(feat)
+        # Weather dynamics (can be computed from weather history only)
+        elif any(x in feat for x in ['Temp_Anomaly', 'TAVG_30day', 'Wind_Percentile']):
+            weather_derivable_features.append(feat)
+        # Rainfall season cumsum (weather only)
+        elif 'Rainfall_Season_Cumsum' in feat or 'Season' in feat:
+            weather_derivable_features.append(feat)
+        # GDD features (weather only)
+        elif 'GDD' in feat:
+            weather_derivable_features.append(feat)
+        # Peak proximity (date only)
+        elif 'Peak_Prox' in feat:
+            weather_derivable_features.append(feat)
+        # Weather interaction terms
+        elif feat in ['Temp_x_Spring', 'Temp_x_Summer', 'Rain_x_Wind']:
+            weather_derivable_features.append(feat)
+        # Weather rolling/lag features (no pollen needed)
+        elif 'TMAX_lag_' in feat or 'PRCP_lag_' in feat:
+            weather_derivable_features.append(feat)
+        elif 'Temp_roll_' in feat or 'Rain_roll_' in feat:
+            weather_derivable_features.append(feat)
+        # EXCLUDE: Pollen lag/rolling features (require historical pollen data)
+        # These would not be available from user input alone
+    
+    # Remove duplicates and ensure all features exist in df
+    weather_derivable_features = [f for f in weather_derivable_features if f in df.columns]
+    weather_derivable_features = list(dict.fromkeys(weather_derivable_features))  # Remove duplicates
+    
+    print(f"\n📊 Feature Analysis:")
+    print(f"   • Total features in full model: {len(feature_cols)}")
+    print(f"   • Weather-derivable features: {len(weather_derivable_features)}")
+    print(f"   • Excluded (require pollen history): {len(feature_cols) - len(weather_derivable_features)}")
+    
+    excluded_features = [f for f in feature_cols if f not in weather_derivable_features and f in df.columns]
+    if excluded_features:
+        pollen_features = [f for f in excluded_features if 'Pollen' in f]
+        print(f"\n🚫 Excluded features (require pollen data):")
+        for feat in pollen_features[:5]:  # Show first 5
+            print(f"   • {feat}")
+        if len(pollen_features) > 5:
+            print(f"   • ... and {len(pollen_features) - 5} more")
+    
+    # Use same 80/20 split as training
+    split_idx = int(len(df) * 0.8)
+    test_df = df.iloc[split_idx:]
+    
+    results = {}
+    
+    print(f"\n{'='*70}")
+    print(f"📊 EVALUATING MODELS WITH WEATHER-ONLY INPUTS")
+    print(f"{'='*70}")
+    
+    for pollen_type, model in models_dict.items():
+        severity_col = f'{pollen_type}_Severity'
+        
+        if severity_col not in test_df.columns:
+            print(f"\n⚠️  Skipping {pollen_type} (no severity data)")
+            continue
+        
+        print(f"\n{'='*70}")
+        print(f"🌸 {pollen_type}")
+        print(f"{'='*70}")
+        
+        # Prepare test data with only weather-derivable features
+        test_clean = test_df.dropna(subset=weather_derivable_features + [severity_col])
+        
+        # Create feature matrix - fill missing features with 0
+        # (features that depend on pollen history will be set to 0)
+        X_test_weather = pd.DataFrame(0, index=test_clean.index, columns=feature_cols)
+        
+        # Fill in the weather-derivable features
+        for feat in weather_derivable_features:
+            if feat in test_clean.columns:
+                X_test_weather[feat] = test_clean[feat]
+        
+        y_test = test_clean[severity_col]
+        
+        print(f"📊 Test set: {len(test_clean):,} samples")
+        print(f"📋 Available features: {len(weather_derivable_features)}/{len(feature_cols)}")
+        print(f"   ({len(weather_derivable_features)/len(feature_cols)*100:.1f}% of full feature set)")
+        
+        # Make predictions
+        y_pred_weather = np.clip(model.predict(X_test_weather), 0, 10)
+        
+        # Calculate metrics
+        metrics = comprehensive_metrics(y_test, y_pred_weather)
+        
+        print(f"\n📈 Weather-Only Performance:")
+        print(f"   MAE:           {metrics['mae']:.4f}")
+        print(f"   RMSE:          {metrics['rmse']:.4f}")
+        print(f"   R²:            {metrics['r2']:.4f}")
+        print(f"   Weighted MAE:  {metrics['weighted_mae']:.4f}")
+        print(f"   Acc (±1):      {metrics['acc_within_1']:.1%}")
+        print(f"   Acc (±2):      {metrics['acc_within_2']:.1%}")
+        
+        if metrics['high_count'] > 0:
+            print(f"   High Days MAE: {metrics['high_mae']:.4f} ({metrics['high_count']} days)")
+        
+        # Performance assessment
+        if metrics['mae'] <= 0.50:
+            emoji = "🏆 EXCELLENT"
+            assessment = "Strong predictions with weather only!"
+        elif metrics['mae'] <= 0.70:
+            emoji = "✨ GOOD"
+            assessment = "Reasonable predictions possible"
+        elif metrics['mae'] <= 0.90:
+            emoji = "👍 FAIR"
+            assessment = "Moderate accuracy, pollen history would help"
+        else:
+            emoji = "📊 LIMITED"
+            assessment = "Historical pollen data recommended"
+        
+        print(f"\n{emoji}")
+        print(f"   {assessment}")
+        
+        # Store results
+        results[pollen_type] = {
+            'mae': float(metrics['mae']),
+            'rmse': float(metrics['rmse']),
+            'r2': float(metrics['r2']),
+            'weighted_mae': float(metrics['weighted_mae']),
+            'acc_within_1': float(metrics['acc_within_1']),
+            'acc_within_2': float(metrics['acc_within_2']),
+            'high_mae': float(metrics['high_mae']) if not np.isnan(metrics['high_mae']) else None,
+            'high_count': int(metrics['high_count']),
+            'test_samples': len(test_clean),
+            'features_available': len(weather_derivable_features),
+            'features_total': len(feature_cols),
+            'predictions': y_pred_weather.tolist(),
+            'actuals': y_test.tolist()
+        }
+    
+    # Summary
+    print(f"\n{'='*70}")
+    print(f"📊 WEATHER-ONLY SUMMARY")
+    print(f"{'='*70}")
+    print(f"\n{'Pollen Type':<15} {'MAE':<8} {'R²':<8} {'Acc(±1)':<10} {'Samples':<10}")
+    print("-"*70)
+    
+    for ptype, metrics in results.items():
+        print(f"{ptype:<15} {metrics['mae']:<8.4f} {metrics['r2']:<8.4f} "
+              f"{metrics['acc_within_1']:<10.1%} {metrics['test_samples']:<10,}")
+    
+    # Average metrics
+    avg_mae = np.mean([m['mae'] for m in results.values()])
+    avg_r2 = np.mean([m['r2'] for m in results.values()])
+    avg_acc = np.mean([m['acc_within_1'] for m in results.values()])
+    
+    print("-"*70)
+    print(f"{'AVERAGE':<15} {avg_mae:<8.4f} {avg_r2:<8.4f} {avg_acc:<10.1%}")
+    
+    print(f"\n💡 Key Insights:")
+    print(f"   • Weather-only predictions achieve {avg_mae:.3f} MAE on average")
+    print(f"   • {avg_acc:.1%} of predictions within ±1 severity level")
+    print(f"   • Using {len(weather_derivable_features)}/{len(feature_cols)} features "
+          f"({len(weather_derivable_features)/len(feature_cols)*100:.0f}%)")
+    
+    if avg_mae <= 0.60:
+        print(f"   ✅ Weather-only approach is viable for this application!")
+    elif avg_mae <= 0.80:
+        print(f"   ⚠️  Weather-only is acceptable but historical pollen data would improve accuracy")
+    else:
+        print(f"   ⚠️  Historical pollen data strongly recommended for better predictions")
+    
+    # Save results
+    results['_summary'] = {
+        'avg_mae': float(avg_mae),
+        'avg_r2': float(avg_r2),
+        'avg_acc_within_1': float(avg_acc),
+        'features_available': len(weather_derivable_features),
+        'features_total': len(feature_cols),
+        'feature_coverage': len(weather_derivable_features) / len(feature_cols),
+        'weather_features': weather_derivable_features,
+        'excluded_features': excluded_features
+    }
+    
+    with open('results/weather_only_evaluation.json', 'w') as f:
+        json.dump(results, f, indent=2)
+    
+    print(f"\n💾 Saved: results/weather_only_evaluation.json")
+    print(f"{'='*70}")
+    
+    return results
+
+
+# ============================================================================
 # TRAINING
 # ============================================================================
 
@@ -621,6 +850,28 @@ def main():
     
     joblib.dump(feature_cols, 'models/xgboost_features.joblib')
     
+    # Weather-only evaluation
+    print(f"\n{'='*70}")
+    print(f"🌦️  WEATHER-ONLY EVALUATION")
+    print(f"{'='*70}")
+    
+    # Load trained models
+    trained_models = {}
+    for pollen_type in pollen_types:
+        model_path = f'models/xgboost_{pollen_type.lower()}.joblib'
+        import os
+        if os.path.exists(model_path):
+            trained_models[pollen_type] = joblib.load(model_path)
+            print(f"   ✅ Loaded {pollen_type} model")
+        else:
+            print(f"   ⚠️  Model not found: {model_path}")
+    
+    if trained_models:
+        weather_only_results = evaluate_weather_only_performance(trained_models, df, feature_cols)
+    else:
+        print(f"   ⚠️  No models found for evaluation")
+        weather_only_results = None
+    
     # Generate visualizations
     print(f"\n📊 Generating visualizations...")
     
@@ -655,15 +906,54 @@ def main():
     print(f"   ✅ Saved: xgboost_predictions_scatter.png")
     plt.close()
     
+    # 2. Weather-only comparison visualization
+    if weather_only_results:
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        
+        # Compare MAE: Full vs Weather-only
+        pollen_types_list = [k for k in results_summary.keys() if k != '_timing']
+        full_mae = [results_summary[pt]['mae'] for pt in pollen_types_list]
+        weather_mae = [weather_only_results[pt]['mae'] for pt in pollen_types_list if pt in weather_only_results]
+        
+        x = np.arange(len(pollen_types_list))
+        width = 0.35
+        
+        axes[0].bar(x - width/2, full_mae, width, label='Full Features', color='#2ecc71')
+        axes[0].bar(x + width/2, weather_mae, width, label='Weather Only', color='#3498db')
+        axes[0].set_xlabel('Pollen Type')
+        axes[0].set_ylabel('MAE')
+        axes[0].set_title('Model Performance: Full vs Weather-Only Features')
+        axes[0].set_xticks(x)
+        axes[0].set_xticklabels(pollen_types_list, rotation=45, ha='right')
+        axes[0].legend()
+        axes[0].grid(True, alpha=0.3, axis='y')
+        
+        # Feature availability pie chart
+        if '_summary' in weather_only_results:
+            available = weather_only_results['_summary']['features_available']
+            excluded = weather_only_results['_summary']['features_total'] - available
+            
+            axes[1].pie([available, excluded], 
+                       labels=['Weather-Derivable', 'Requires Pollen History'],
+                       autopct='%1.1f%%',
+                       colors=['#3498db', '#95a5a6'],
+                       startangle=90)
+            axes[1].set_title(f'Feature Availability\n({available}/{weather_only_results["_summary"]["features_total"]} features)')
+        
+        plt.tight_layout()
+        plt.savefig('results/weather_only_comparison.png', dpi=150, bbox_inches='tight')
+        print(f"   ✅ Saved: weather_only_comparison.png")
+        plt.close()
+    
     overall_time = time.time() - overall_start
     
     print(f"\n💾 Outputs:")
-    print(f"   • Models: pollen_xgboost_[type].joblib (5 files)")
-    print(f"   • Feature importance: xgboost_features_[type].json (5 files)")
-    print(f"   • Results: xgboost_multitype_results.json")
+    print(f"   • Models: xgboost_[type].joblib (5 files)")
+    print(f"   • Results: xgboost_multitype.json")
+    print(f"   • Weather-only eval: weather_only_evaluation.json")
     print(f"   • Features list: xgboost_features.joblib")
     print(f"   • Visualizations: xgboost_predictions_scatter.png")
-    print(f"   • Visualizations: xgboost_feature_importance_detailed.png")
+    print(f"   • Visualizations: weather_only_comparison.png")
     
     print(f"\n{'='*70}")
     print("✅ TRAINING COMPLETE!")
@@ -671,8 +961,11 @@ def main():
     print(f"⏱️  Total runtime: {overall_time:.1f}s ({overall_time/60:.1f} min)")
     print(f"⏰ Finished: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"\n🎯 Key Results:")
-    print(f"   • Average MAE: {avg_mae:.4f}")
-    print(f"   • Average R²: {avg_r2:.4f}")
+    print(f"   • Average MAE (Full): {avg_mae:.4f}")
+    print(f"   • Average R² (Full): {avg_r2:.4f}")
+    if weather_only_results and '_summary' in weather_only_results:
+        print(f"   • Average MAE (Weather-Only): {weather_only_results['_summary']['avg_mae']:.4f}")
+        print(f"   • Weather-only accuracy: {weather_only_results['_summary']['avg_acc_within_1']:.1%} within ±1")
     print(f"   • {len([k for k in results_summary.keys() if k != '_timing'])} models trained successfully")
     
     # Compare with baseline if available
